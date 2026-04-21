@@ -1,0 +1,1 @@
+from data_structures.fenwick_tree.fenwick_tree import FenwickTree
