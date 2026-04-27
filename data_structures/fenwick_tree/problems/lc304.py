@@ -41,47 +41,64 @@ class NumMatrix:
    def __init__(self, matrix: list[list[int]]) -> None:
       if not matrix:
          return
-
       rows, cols = len(matrix), len(matrix[0])
       self.rows, self.cols = rows + 1, cols + 1
       self.tree = [[0 for _ in range(self.cols)] for _ in range(self.rows)]
 
       for r in range(rows):
          for c in range(cols):
-            self.update(r + 1, c + 1, matrix[r][c])
+            self._update_diff(r + 1, c + 1, matrix[r][c])
 
    def _low_bit(self, num: int) -> int:
       return num & (-num)
 
-   def update(self, row: int, col: int, value: int) -> None:
-      while col < self.cols:
-         cur_row = row
-         while cur_row < self.rows:
-            self.tree[cur_row][col] += value
-            cur_row += self._low_bit(cur_row)
-         col += self._low_bit(col)
+   def _update_diff(self, row: int, col: int, diff: int) -> None:
+      while row < self.rows:
+         cur_col = col
+         while cur_col < self.cols:
+            self.tree[row][cur_col] += diff
+            cur_col += self._low_bit(cur_col)
+         row += self._low_bit(row)
 
-   def print(self):
-      for r in range(self.rows):
-         for c in range(self.cols):
-            print(f"{self.tree[r][c]:3}", end="")
-         print()
+   def _query_row(self, row: int, col: int) -> int:
+      total = 0
+      while row > 0:
+         total += self.tree[row][col]
+         row -= self._low_bit(row)
+      return total
 
-   def query(self, row: int, col: int) -> int:
-      # Change from 0-based index to 1-based index
-      row, col = row + 1, col + 1
+   def _query_col(self, row: int, col: int) -> int:
+      total = 0
+      while col > 0:
+         total += self.tree[row][col]
+         col -= self._low_bit(col)
+      return total
 
+   def _query(self, row: int, col: int) -> int:
+      # row and col are one-based.
       total = 0
       while row > 0 or col > 0:
          next_col = col - self._low_bit(col)
          next_row = row - self._low_bit(row)
          total += (
-            self.tree[row][col] + self.tree[next_row][col] + self.tree[row][next_col]
+            self.tree[row][col]
+            + (self._query_row(next_row, col) if next_row > 0 else 0)
+            + (self._query_col(row, next_col) if next_col > 0 else 0)
          )
          row, col = next_row, next_col
       return total
 
+   def query(self, row: int, col: int) -> int:
+      # External API: row and col are zero-based.
+      return self._query(row + 1, col + 1)
+
+   def update(self, row: int, col: int, value: int) -> None:
+      # External API: row and col are zero-based.
+      diff = value - self.sumRegion(row, col, row, col)
+      self._update_diff(row + 1, col + 1, diff)
+
    def sumRegion(self, x0: int, y0: int, x1: int, y1: int) -> int:
+      # External API: row and col are zero-based.
       if x0 > x1 or y0 > y1:
          raise ValueError(f"Invalid region ({x0}, {y0}) and ({x1}, {y1})")
       area1 = self.query(x1, y1)
@@ -89,6 +106,24 @@ class NumMatrix:
       area3 = self.query(x1, y0 - 1)
       area4 = self.query(x0 - 1, y0 - 1)
       return area1 - area2 - area3 + area4
+
+   def print(self):
+      for i in [""] + list(range(self.cols)):
+         print(f"{i:3}", end="")
+      print()
+      for r in range(self.rows):
+         row_content = [r] + self.tree[r]
+         for i in row_content:
+            print(f"{i:3}", end="")
+         print()
+
+
+def summ(matrix, row, col):
+   total = 0
+   for i in range(row + 1):
+      for j in range(col + 1):
+         total += matrix[i][j]
+   return total
 
 
 def main():
